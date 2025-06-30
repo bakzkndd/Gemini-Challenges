@@ -16,9 +16,11 @@ function getArgNames(func: Function): string[] {
   return [];
 }
 
+const ignoreFolders = ["node_modules", "Controller", ".git"]
+
 // get all challenges, which is all folders except this one in the parent folder
 const challenges : string[] = fs.readdirSync(path.join(__dirname, "..")).filter((file) => {
-  return fs.statSync(path.join(__dirname, "..", file)).isDirectory() && file !== "node_modules" && file !== "Controller";
+  return fs.statSync(path.join(__dirname, "..", file)).isDirectory() && !ignoreFolders.includes(file);
 });
 
 async function showChallenge(challenge: string) {
