@@ -127,10 +127,12 @@ async function showChallenge(challenge: string) {
             }
 
             const result = script[functionName](...args);
-            console.log(`Result: ${result}`);
+            console.log(`Result:`);
+            console.log(result)
         } else {
             const result = script[functionName]();
-            console.log(`Result: ${result}`);
+            console.log(`Result:`);
+            console.log(result)
         }
     } catch (error) {
         console.error(error);
