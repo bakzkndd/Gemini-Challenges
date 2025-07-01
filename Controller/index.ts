@@ -32,12 +32,49 @@ async function showChallenge(challenge: string) {
     const challengePath = path.join(__dirname, "..", challenge);
     const challengeFiles = fs.readdirSync(challengePath);
 
+    const filesWithFunctions = [];
     for (const file of challengeFiles) {
         const filePath = path.join(challengePath, file);
         const script = require(filePath);
         
         //show all functions as options, as well as a return option
         const functions = Object.keys(script);
+        if (functions.length > 0) {
+            filesWithFunctions.push(file);
+        }
+    }
+
+    const answers = await inquirer.prompt([
+        {
+            type: "list",
+            name: "function",
+            message: "Select a file:",
+            choices: [
+                ...filesWithFunctions,
+                new inquirer.Separator(),
+                "Return",
+            ],
+        },
+    ]);
+
+    if (answers.function === "Return") {
+        showChallenges();
+        return;
+    }
+
+    const file = answers.function;
+
+    console.clear();
+    console.log("==================");
+    console.log(`Challenge: ${challenge}`);
+    console.log(`File: ${file}`);
+    console.log("==================");
+
+    try {
+        const filePath = path.join(challengePath, file);
+        const script = require(filePath);
+        const functions = Object.keys(script);
+
         const answers = await inquirer.prompt([
             {
                 type: "list",
@@ -52,7 +89,7 @@ async function showChallenge(challenge: string) {
         const functionName = answers.function;
 
         if (functionName === "Return") {
-            showChallenges();
+            showChallenge(challenge);
             return;
         }
 
@@ -64,6 +101,7 @@ async function showChallenge(challenge: string) {
         console.clear();
         console.log("==================");
         console.log(`Challenge: ${challenge}`);
+        console.log(`File: ${file}`);
         console.log(`Function: ${functionName}`);
         console.log(`Arguments: ${argCount}`);
         console.log("==================");
@@ -82,6 +120,7 @@ async function showChallenge(challenge: string) {
                 console.clear();
                 console.log("==================");
                 console.log(`Challenge: ${challenge}`);
+                console.log(`File: ${file}`);
                 console.log(`Function: ${functionName}`);
                 console.log(`Arguments: ${argCount}`);
                 console.log("==================");
@@ -93,6 +132,8 @@ async function showChallenge(challenge: string) {
             const result = script[functionName]();
             console.log(`Result: ${result}`);
         }
+    } catch (error) {
+        console.error(error);
     }
 
     console.log("==================");

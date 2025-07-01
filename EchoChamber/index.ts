@@ -23,43 +23,47 @@ const echoEvents: EchoEvent[] = [
 
 export function mostInfluentialUsers(): string[] {
     const users = new Map<string, string[]>();
+    for (let i = 0; i < originalPosts.length; i++) {
+        const originalPost = originalPosts[i];
+        if (!users.has(originalPost.AUTHOR_USER_ID)) {
+            users.set(originalPost.AUTHOR_USER_ID, []);
+        }
+    }
+
     for (let i = 0; i < echoEvents.length; i++) {
         const echoEvent = echoEvents[i];
         if (echoEvent.ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED.startsWith('E')) {
-            const originalEcho = echoEvents.find(e => e.ECHO_ID === echoEvent.ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED);
-            if (originalEcho) {
-                let found = false;
-                for (const user of users) {
-                    if (user[1].includes(originalEcho.ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED)) {
-                        if (!user[1].includes(echoEvent.ECHO_ID)) {
-                            user[1].push(echoEvent.ECHO_ID);
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    users.set("", [echoEvent.ECHO_ID, echoEvent.ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED]);
-                }
+            const user = findUser(echoEvent.ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED);
+            if (user) {
+                users.get(user)?.push(echoEvent.ECHO_ID);
             }
         } else {
             const originalPost = originalPosts.find(post => post.POST_ID === echoEvent.ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED);
             if (originalPost) {
-                let found = false;
-                for (const user of users) {
-                    if (user[1].includes(echoEvent.ECHO_ID)) {
-                        user[0] = originalPost.AUTHOR_USER_ID;
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    users.set(originalPost.AUTHOR_USER_ID, [echoEvent.ECHO_ID, originalPost.POST_ID]);
-                }
+                users.get(originalPost.AUTHOR_USER_ID)?.push(echoEvent.ECHO_ID);
             }
         }
     }
     //sort by amount of posts - 1
     const sortedUsers = Array.from(users).sort((a, b) => b[1].length - a[1].length);
-    return sortedUsers.map(user => `${user[0]}: ${user[1].length - 1} `);
+    return sortedUsers.map(user => `${user[0]}: ${user[1].length} `);
+}
+
+export function findUser(postId: string): string | undefined {
+    if (postId.startsWith('P')) {
+        for (let i = 0; i < originalPosts.length; i++) {
+            const post = originalPosts[i];
+            if (post.POST_ID === postId) {
+                return post.AUTHOR_USER_ID;
+            }
+        }
+    } else if (postId.startsWith('E')) {
+        for (let i = 0; i < echoEvents.length; i++) {
+            const echo = echoEvents[i];
+            if (echo.ECHO_ID === postId) {
+                return findUser(echo.ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED);
+            }
+        }
+    }
+    return undefined;
 }
