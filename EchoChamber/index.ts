@@ -3,39 +3,28 @@ import Graph from 'graphology';
 import louvain from 'graphology-communities-louvain';
 
 const originalPosts: OriginalPost[] = [
-    // Group A (The Echo Chamber)
-    { POST_ID: 'PA1', AUTHOR_USER_ID: 'UA1', TIMESTAMP: new Date(), CONTENT_HASH: 'groupA_1' },
-    { POST_ID: 'PA2', AUTHOR_USER_ID: 'UA2', TIMESTAMP: new Date(), CONTENT_HASH: 'groupA_2' },
-
-    // Group B (The Leaky Group)
-    { POST_ID: 'PB1', AUTHOR_USER_ID: 'UB1', TIMESTAMP: new Date(), CONTENT_HASH: 'groupB_1' },
-    { POST_ID: 'PB2', AUTHOR_USER_ID: 'UB2', TIMESTAMP: new Date(), CONTENT_HASH: 'groupB_2' },
-
-    // External Content Source (doesn't echo back)
-    { POST_ID: 'PX1', AUTHOR_USER_ID: 'UX1', TIMESTAMP: new Date(), CONTENT_HASH: 'external_1' },
+    { POST_ID: 'P-OTHER', AUTHOR_USER_ID: 'U-OTHER', TIMESTAMP: new Date(), CONTENT_HASH: 'other' },
+    { POST_ID: 'P-MAIN', AUTHOR_USER_ID: 'U-AUTHOR', TIMESTAMP: new Date(), CONTENT_HASH: 'main_post' }
 ];
 
 const echoEvents: EchoEvent[] = [
-    // --- Group A ({UA1, UA2}) Interactions ---
-    // High number of internal echoes
-    { ECHO_ID: 'EA01', ECHOING_USER_ID: 'UA1', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PA2', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EA02', ECHOING_USER_ID: 'UA1', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PA2', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EA03', ECHOING_USER_ID: 'UA1', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PA2', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EA04', ECHOING_USER_ID: 'UA2', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PA1', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EA05', ECHOING_USER_ID: 'UA2', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PA1', TIMESTAMP: new Date() },
-    // One outgoing echo
-    { ECHO_ID: 'EA06', ECHOING_USER_ID: 'UA1', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PB1', TIMESTAMP: new Date() },
+    // A simple echo of the other post, just to ensure it's ignored
+    { ECHO_ID: 'E0', ECHOING_USER_ID: 'U1', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'P-OTHER', TIMESTAMP: new Date() },
 
-    // --- Group B ({UB1, UB2}) Interactions ---
-    // Low number of internal echoes
-    { ECHO_ID: 'EB01', ECHOING_USER_ID: 'UB1', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PB2', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EB02', ECHOING_USER_ID: 'UB2', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PB1', TIMESTAMP: new Date() },
-    // High number of outgoing echoes to an external source
-    { ECHO_ID: 'EB03', ECHOING_USER_ID: 'UB1', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PX1', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EB04', ECHOING_USER_ID: 'UB1', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PX1', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EB05', ECHOING_USER_ID: 'UB2', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PX1', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EB06', ECHOING_USER_ID: 'UB2', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PX1', TIMESTAMP: new Date() },
-    { ECHO_ID: 'EB07', ECHOING_USER_ID: 'UB2', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'PX1', TIMESTAMP: new Date() },
+    // --- Start of the main echo chains from P-MAIN ---
+
+    // Path 1: A deep chain (A -> B -> C)
+    { ECHO_ID: 'E1', ECHOING_USER_ID: 'U-DEEP-A', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'P-MAIN', TIMESTAMP: new Date() },
+    { ECHO_ID: 'E2', ECHOING_USER_ID: 'U-DEEP-B', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'E1', TIMESTAMP: new Date() },
+    { ECHO_ID: 'E3', ECHOING_USER_ID: 'U-DEEP-C', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'E2', TIMESTAMP: new Date() },
+
+    // Path 2: A chain that branches out
+    { ECHO_ID: 'E4', ECHOING_USER_ID: 'U-BRANCH-ROOT', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'P-MAIN', TIMESTAMP: new Date() },
+    { ECHO_ID: 'E5', ECHOING_USER_ID: 'U-BRANCH-A', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'E4', TIMESTAMP: new Date() },
+    { ECHO_ID: 'E6', ECHOING_USER_ID: 'U-BRANCH-B', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'E4', TIMESTAMP: new Date() },
+
+    // Path 3: A simple, short chain (dead end)
+    { ECHO_ID: 'E7', ECHOING_USER_ID: 'U-SHORT', ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED: 'P-MAIN', TIMESTAMP: new Date() }
 ];
 
 export function mostInfluentialUsers(): string[] {
@@ -165,4 +154,23 @@ export function generateUserGraph() : Map<string, Map<string, number>> {
         }
     }
     return userGraph;
+}
+
+export function tracePaths(postId: string): Array<string[]> {
+    const paths: Array<string[]> = [];
+
+    for (let i = 0; i < echoEvents.length; i++) {
+        if (echoEvents[i].ORIGINAL_POST_ID_OR_ECHO_ID_BEING_ECHOED === postId) {
+            const trace = tracePaths(echoEvents[i].ECHO_ID);
+            if (trace.length > 0) {
+                for (let j = 0; j < trace.length; j++) {
+                    paths.push([postId, ...trace[j]]);
+                }
+            } else {
+                paths.push([postId, echoEvents[i].ECHO_ID]);
+            }
+        }
+    }
+
+    return paths;
 }
